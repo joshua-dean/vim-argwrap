@@ -45,6 +45,7 @@ endfunction
 
 function! argwrap#findRange(braces)
     let l:filter = 'synIDattr(synID(line("."), col("."), 0), "name") =~? "string"'
+
     " Handle case where braces are identical (plain searchpairpos won't work)
     if a:braces[0] == a:braces[1]
         " To prevent weird matching, we need some definition of the "opening" and "closing" brace.
@@ -57,12 +58,9 @@ function! argwrap#findRange(braces)
         " This prevents us from skipping over other opening/closing braces.
         let l:startPattern = '\v('.l:bracePatterns[0].')|('.a:braces[0].')'
         let l:endPattern = '\v('.l:bracePatterns[1].')|('.a:braces[1].')'
-        " let l:startPattern = '\v('.a:braces[0].')|('.l:bracePatterns[0].')'
-        " let l:endPattern = '\v('.a:braces[1].')|('.l:bracePatterns[1].')'
-        echo "\n".l:startPattern."\n"
-        echo "\n".l:endPattern."\n"
-        let [l:lineStart, l:colStart, l:spMatchStart] = searchpos(l:startPattern, 'Wcnpb')
-        let [l:lineEnd, l:colEnd, l:spMatchEnd] = searchpos(l:endPattern, 'Wcnp')
+
+        let [l:lineStart, l:colStart, l:spMatchStart] = searchpos(l:startPattern, 'Wcnpb', filter)
+        let [l:lineEnd, l:colEnd, l:spMatchEnd] = searchpos(l:endPattern, 'Wcnp', filter)
         
         " We want both of the subpatterns to be 2,
         " e.g. it matched open/close at the first case of the raw brace
@@ -77,17 +75,6 @@ function! argwrap#findRange(braces)
             let l:colEnd = 0
         endif
 
-        " " We also skip the filter in this case
-        " " let [l:lineStart, l:colStart] = searchpairpos(l:brace_patterns[0], '', l:brace_patterns[1], 'Wcnb')
-        " " let [l:lineEnd, l:colEnd] = searchpairpos(l:brace_patterns[0], '', l:brace_patterns[1], 'Wcn')
-        " let [l:lineStart, l:colStart] = searchpairpos(l:brace_patterns[1], '', l:brace_patterns[0], 'Wcnb')
-        " let [l:lineEnd, l:colEnd] = searchpairpos(l:brace_patterns[1], '', l:brace_patterns[0], 'Wcn')
-
-        echo "\ninitial lines\n"
-        echo [l:lineStart, l:colStart, l:lineEnd, l:colEnd]
-        echo "\nspMatch\n"
-        echo [l:spMatchStart, l:spMatchEnd]
-
         " Only adjust if both are non-zero
         if !(l:lineStart == 0 && l:colStart == 0) && !(l:lineEnd == 0 && l:colEnd == 0)
             " We then adjust the start and end positions to be the actual braces instead of the patterns
@@ -101,19 +88,12 @@ function! argwrap#findRange(braces)
         let [l:lineStart, l:colStart] = searchpairpos(a:braces[0], '', a:braces[1], 'Wcnb', filter)
         let [l:lineEnd, l:colEnd] = searchpairpos(a:braces[0], '', a:braces[1], 'Wcn', filter)
     endif
-    echo "\nbraces\n"
-    echo a:braces
-    echo "\nlines\n"
-    echo [l:lineStart, l:colStart, l:lineEnd, l:colEnd]
-    echo "\n"
     return {'lineStart': l:lineStart, 'colStart': l:colStart, 'lineEnd': l:lineEnd, 'colEnd': l:colEnd}
 endfunction
 
 function! argwrap#findClosestRange()
     let l:ranges = []
     for l:braces in [['(', ')'], ['\[', '\]'], ['{', '}'], ['"""', '"""']]
-    " for l:braces in [['(', ')'], ['\[', '\]'], ['{', '}']]
-    " for l:braces in [['(', ')'], ['\[', '\]'], ['{', '}'], ['^\s*"""', '"""\s*$']]
         let l:range = argwrap#findRange(braces)
         if argwrap#validateRange(l:range)
             call add(l:ranges, l:range)
