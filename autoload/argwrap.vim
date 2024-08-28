@@ -47,18 +47,33 @@ function! argwrap#findRange(braces)
     let l:filter = 'synIDattr(synID(line("."), col("."), 0), "name") =~? "string"'
     " Handle case where braces are identical (searchpairpos won't work)
     if a:braces[0] == a:braces[1]
-        let [l:lineStart, l:colStart] = searchpos(a:braces[0], 'Wcnb', filter)
-        let [l:lineEnd, l:colEnd] = searchpos(a:braces[1], 'Wcn', filter)
+        " To prevent weird matching, we search for braces at the start or end of the line,
+        " give or take whitespace. We then adjust the column to the actual brace.
+        let l:brace_patterns = ['^\s*'.a:braces[0], a:braces[0].'\s*$']
+        echo "\nbrace_patterns\n"
+        echo l:brace_patterns
+        let [l:lineStart, l:colStart] = searchpairpos(l:brace_patterns[0], '', l:brace_patterns[1], 'Wcnb', filter)
+        let [l:lineEnd, l:colEnd] = searchpairpos(l:brace_patterns[0], '', l:brace_patterns[1], 'Wcn', filter)
+        let [_, l:colStart] = searchpairpos(a:braces[0], '', l:brace_patterns[1], 'Wcnb', filter)
+        let [_, l:colEnd] = searchpairpos(l:brace_patterns[0], '', a:braces[1], 'Wcn', filter)
+        " If they're not on the same line, we might have some issues
     else
         let [l:lineStart, l:colStart] = searchpairpos(a:braces[0], '', a:braces[1], 'Wcnb', filter)
         let [l:lineEnd, l:colEnd] = searchpairpos(a:braces[0], '', a:braces[1], 'Wcn', filter)
     endif
+    echo "\nbraces\n"
+    echo a:braces
+    echo "\nlines\n"
+    echo [l:lineStart, l:colStart, l:lineEnd, l:colEnd]
+    echo "\n"
     return {'lineStart': l:lineStart, 'colStart': l:colStart, 'lineEnd': l:lineEnd, 'colEnd': l:colEnd}
 endfunction
 
 function! argwrap#findClosestRange()
     let l:ranges = []
     for l:braces in [['(', ')'], ['\[', '\]'], ['{', '}'], ['"""', '"""']]
+    " for l:braces in [['(', ')'], ['\[', '\]'], ['{', '}']]
+    " for l:braces in [['(', ')'], ['\[', '\]'], ['{', '}'], ['^\s*"""', '"""\s*$']]
         let l:range = argwrap#findRange(braces)
         if argwrap#validateRange(l:range)
             call add(l:ranges, l:range)
