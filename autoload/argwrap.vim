@@ -45,25 +45,54 @@ endfunction
 
 function! argwrap#findRange(braces)
     let l:filter = 'synIDattr(synID(line("."), col("."), 0), "name") =~? "string"'
-    " Handle case where braces are identical (searchpairpos won't work)
+    " Handle case where braces are identical (plain searchpairpos won't work)
     if a:braces[0] == a:braces[1]
         " To prevent weird matching, we need some definition of the "opening" and "closing" brace.
         " Opening will not have any leading characters (e.g. only whitespace)
         " Closing will not have any trailing characters (e.g. only whitespace)
-        let l:brace_patterns = ['^\s*'.a:braces[0], a:braces[0].'\s*$']
+        let l:bracePatterns = ['^\s*'.a:braces[0], a:braces[0].'\s*$']
 
-        " We also skip the filter in this case
-        let [l:lineStart, l:colStart] = searchpairpos(l:brace_patterns[0], '', l:brace_patterns[1], 'Wcnb')
-        let [l:lineEnd, l:colEnd] = searchpairpos(l:brace_patterns[0], '', l:brace_patterns[1], 'Wcn')
+        " Unfortunately, we can end up with cases where a brace meets the criteria for both.
+        " To handle this, we try to match both the raw brace, and the patterns.
+        " This prevents us from skipping over other opening/closing braces.
+        let l:startPattern = '\v('.l:bracePatterns[0].')|('.a:braces[0].')'
+        let l:endPattern = '\v('.l:bracePatterns[1].')|('.a:braces[1].')'
+        " let l:startPattern = '\v('.a:braces[0].')|('.l:bracePatterns[0].')'
+        " let l:endPattern = '\v('.a:braces[1].')|('.l:bracePatterns[1].')'
+        echo "\n".l:startPattern."\n"
+        echo "\n".l:endPattern."\n"
+        let [l:lineStart, l:colStart, l:spMatchStart] = searchpos(l:startPattern, 'Wcnpb')
+        let [l:lineEnd, l:colEnd, l:spMatchEnd] = searchpos(l:endPattern, 'Wcnp')
+        
+        " We want both of the subpatterns to be 2,
+        " e.g. it matched open/close at the first case of the raw brace
+        " If it's not, we set as though there wasn't a match
+        if l:spMatchStart != 2
+            let l:lineStart = 0
+            let l:colStart = 0
+        endif
+
+        if l:spMatchEnd != 2
+            let l:lineEnd = 0
+            let l:colEnd = 0
+        endif
+
+        " " We also skip the filter in this case
+        " " let [l:lineStart, l:colStart] = searchpairpos(l:brace_patterns[0], '', l:brace_patterns[1], 'Wcnb')
+        " " let [l:lineEnd, l:colEnd] = searchpairpos(l:brace_patterns[0], '', l:brace_patterns[1], 'Wcn')
+        " let [l:lineStart, l:colStart] = searchpairpos(l:brace_patterns[1], '', l:brace_patterns[0], 'Wcnb')
+        " let [l:lineEnd, l:colEnd] = searchpairpos(l:brace_patterns[1], '', l:brace_patterns[0], 'Wcn')
 
         echo "\ninitial lines\n"
         echo [l:lineStart, l:colStart, l:lineEnd, l:colEnd]
+        echo "\nspMatch\n"
+        echo [l:spMatchStart, l:spMatchEnd]
 
         " Only adjust if both are non-zero
         if !(l:lineStart == 0 && l:colStart == 0) && !(l:lineEnd == 0 && l:colEnd == 0)
             " We then adjust the start and end positions to be the actual braces instead of the patterns
-            let [_, l:colStart] = searchpairpos(a:braces[0], '', l:brace_patterns[1], 'Wcnb', filter)
-            let [_, l:colEnd] = searchpairpos(l:brace_patterns[0], '', a:braces[1], 'Wcn', filter)
+            let [_, l:colStart] = searchpairpos(a:braces[0], '', l:bracePatterns[1], 'Wcnb', filter)
+            let [_, l:colEnd] = searchpairpos(l:bracePatterns[0], '', a:braces[1], 'Wcn', filter)
             
             " Also adjust the start column to the end of the pattern
             let l:colStart += len(a:braces[0]) - 1
