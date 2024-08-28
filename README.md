@@ -8,5 +8,5 @@ The argwrap logic works for the following braces: `()`, `[]`, `{}`.
 It does not work for quotes, and the expansion is not trivial as 
 `searchpairpos` requires `start` and `end` to be distinct.
 
-This fork is attempting to add support for quotes, 
-specifically for python docstring triple quotes (`"""`).
+This fork adds support for triple quotes (`"""`),
+allowing it to wrap/unwrap python docstrings.
