@@ -64,6 +64,9 @@ function! argwrap#findRange(braces)
             " We then adjust the start and end positions to be the actual braces instead of the patterns
             let [_, l:colStart] = searchpairpos(a:braces[0], '', l:brace_patterns[1], 'Wcnb', filter)
             let [_, l:colEnd] = searchpairpos(l:brace_patterns[0], '', a:braces[1], 'Wcn', filter)
+            
+            " Also adjust the start column to the end of the pattern
+            let l:colStart += len(a:braces[0]) - 1
         endif
     else
         let [l:lineStart, l:colStart] = searchpairpos(a:braces[0], '', a:braces[1], 'Wcnb', filter)
