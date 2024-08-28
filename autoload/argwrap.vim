@@ -47,16 +47,24 @@ function! argwrap#findRange(braces)
     let l:filter = 'synIDattr(synID(line("."), col("."), 0), "name") =~? "string"'
     " Handle case where braces are identical (searchpairpos won't work)
     if a:braces[0] == a:braces[1]
-        " To prevent weird matching, we search for braces at the start or end of the line,
-        " give or take whitespace. We then adjust the column to the actual brace.
+        " To prevent weird matching, we need some definition of the "opening" and "closing" brace.
+        " Opening will not have any leading characters (e.g. only whitespace)
+        " Closing will not have any trailing characters (e.g. only whitespace)
         let l:brace_patterns = ['^\s*'.a:braces[0], a:braces[0].'\s*$']
-        echo "\nbrace_patterns\n"
-        echo l:brace_patterns
-        let [l:lineStart, l:colStart] = searchpairpos(l:brace_patterns[0], '', l:brace_patterns[1], 'Wcnb', filter)
-        let [l:lineEnd, l:colEnd] = searchpairpos(l:brace_patterns[0], '', l:brace_patterns[1], 'Wcn', filter)
-        let [_, l:colStart] = searchpairpos(a:braces[0], '', l:brace_patterns[1], 'Wcnb', filter)
-        let [_, l:colEnd] = searchpairpos(l:brace_patterns[0], '', a:braces[1], 'Wcn', filter)
-        " If they're not on the same line, we might have some issues
+
+        " We also skip the filter in this case
+        let [l:lineStart, l:colStart] = searchpairpos(l:brace_patterns[0], '', l:brace_patterns[1], 'Wcnb')
+        let [l:lineEnd, l:colEnd] = searchpairpos(l:brace_patterns[0], '', l:brace_patterns[1], 'Wcn')
+
+        echo "\ninitial lines\n"
+        echo [l:lineStart, l:colStart, l:lineEnd, l:colEnd]
+
+        " Only adjust if both are non-zero
+        if !(l:lineStart == 0 && l:colStart == 0) && !(l:lineEnd == 0 && l:colEnd == 0)
+            " We then adjust the start and end positions to be the actual braces instead of the patterns
+            let [_, l:colStart] = searchpairpos(a:braces[0], '', l:brace_patterns[1], 'Wcnb', filter)
+            let [_, l:colEnd] = searchpairpos(l:brace_patterns[0], '', a:braces[1], 'Wcn', filter)
+        endif
     else
         let [l:lineStart, l:colStart] = searchpairpos(a:braces[0], '', a:braces[1], 'Wcnb', filter)
         let [l:lineEnd, l:colEnd] = searchpairpos(a:braces[0], '', a:braces[1], 'Wcn', filter)
